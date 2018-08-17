@@ -17,6 +17,6 @@ test_script:
   - dotnet test --no-build
 
 artifacts:
-  - path: aspx2razor\bin\$(configuration)\net40
+  - path: aspx2razor\bin\$(configuration)\net46
     name: aspx2razor
     type: zip

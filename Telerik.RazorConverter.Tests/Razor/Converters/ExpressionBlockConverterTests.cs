@@ -1,4 +1,6 @@
-﻿namespace Telerik.RazorConverter.Tests.Razor.Converters
+﻿using Xunit.Extensions;
+
+namespace Telerik.RazorConverter.Tests.Razor.Converters
 {
     using Moq;
     using Telerik.RazorConverter.Razor.Converters;
@@ -119,6 +121,76 @@
         {
             expressionBlockMock.Setup(cb => cb.Expression).Returns("HttpUtility.HtmlEncode((string)\"x\")");
             nodeFactoryMock.Setup(f => f.CreateExpressionNode("\"x\"", false)).Verifiable();
+
+            converter.ConvertNode(expressionBlockMock.Object);
+
+            nodeFactoryMock.Verify();
+        }
+
+        [Theory]
+        [InlineData("some. Property")]
+        [InlineData("some .Property")]
+        [InlineData("some . Property")]
+        [InlineData("some.Action ()")]
+        public void Expressions_with_spaces_should_be_threated_as_multiline(string input)
+        {
+            expressionBlockMock.Setup(cb => cb.Expression).Returns(input);
+            nodeFactoryMock.Setup(f => f.CreateExpressionNode(input, true)).Verifiable();
+
+            converter.ConvertNode(expressionBlockMock.Object);
+
+            nodeFactoryMock.Verify();
+        }
+
+        [Theory]
+        [InlineData("some.Action()")]
+        [InlineData("some.Action(  parameter  )")]
+        [InlineData("some.Action(some==true?Guid.NewGuid().ToString():null)")]
+        [InlineData("some.Action(some == true\n\t? Guid.NewGuid().ToString()\n\t: null)")]
+        public void Simple_invocations_with_spaces_inside_parentheses_should_not_be_threated_as_multiline(string input)
+        {
+            expressionBlockMock.Setup(cb => cb.Expression).Returns(input);
+            nodeFactoryMock.Setup(f => f.CreateExpressionNode(input, false)).Verifiable();
+
+            converter.ConvertNode(expressionBlockMock.Object);
+
+            nodeFactoryMock.Verify();
+        }
+
+        [Theory]
+        [InlineData("(some)")]
+        [InlineData("( some )")]
+        [InlineData("(some==true?Guid.NewGuid().ToString():null)")]
+        [InlineData("(some == true ? Guid.NewGuid().ToString() : null)")]
+        public void Expressions_in_braces_should_not_be_threated_as_multiline(string input)
+        {
+            expressionBlockMock.Setup(cb => cb.Expression).Returns(input);
+            nodeFactoryMock.Setup(f => f.CreateExpressionNode(input, false)).Verifiable();
+
+            converter.ConvertNode(expressionBlockMock.Object);
+
+            nodeFactoryMock.Verify();
+        }
+        
+        [Fact]
+        public void Ternary_operator_should_be_threated_as_multiline()
+        {
+            expressionBlockMock.Setup(cb => cb.Expression).Returns("some==true?Guid.NewGuid().ToString():null");
+            nodeFactoryMock.Setup(f => f.CreateExpressionNode("some==true?Guid.NewGuid().ToString():null", true)).Verifiable();
+
+            converter.ConvertNode(expressionBlockMock.Object);
+
+            nodeFactoryMock.Verify();
+        }
+
+        [Theory]
+        [InlineData("some==true")]
+        [InlineData("some||true")]
+        [InlineData("some??true")]
+        public void Binary_expressions_should_be_threated_as_multiline(string input)
+        {
+            expressionBlockMock.Setup(cb => cb.Expression).Returns(input);
+            nodeFactoryMock.Setup(f => f.CreateExpressionNode(input, true)).Verifiable();
 
             converter.ConvertNode(expressionBlockMock.Object);
 

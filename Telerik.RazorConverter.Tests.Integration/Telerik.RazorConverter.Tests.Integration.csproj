@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net40</TargetFramework>
+    <TargetFramework>net46</TargetFramework>
     <Company>Telerik Corp.</Company>
     <Copyright>Copyright (c) 2011 Telerik Corp.</Copyright>
     <Product>Telerik.RazorConverter.Tests.Integration</Product>

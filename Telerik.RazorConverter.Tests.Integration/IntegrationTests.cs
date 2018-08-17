@@ -45,7 +45,7 @@
         {
             get
             {
-                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\TestCases");
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "TestCases");
                 var testCasesFolder = new DirectoryInfo(path);
                 foreach (var inputFile in testCasesFolder.EnumerateFiles("*.aspx.txt"))
                 {

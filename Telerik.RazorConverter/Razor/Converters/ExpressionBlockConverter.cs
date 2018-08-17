@@ -1,4 +1,11 @@
-﻿namespace Telerik.RazorConverter.Razor.Converters
+﻿using System;
+using System.Linq;
+using System.Xml.Schema;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+namespace Telerik.RazorConverter.Razor.Converters
 {
     using System.Collections.Generic;
     using System.Text.RegularExpressions;
@@ -21,15 +28,63 @@
         public IList<IRazorNode> ConvertNode(IWebFormsNode node)
         {
             var srcNode = node as IWebFormsExpressionBlockNode;
-            var isMultiline = srcNode.Expression.Contains("\r") || srcNode.Expression.Contains("\n");
             var expression = srcNode.Expression.Trim(new char[] { ' ', '\t' });
             expression = expression.Replace("ResolveUrl", "Url.Content");
             expression = RemoveHtmlEncode(expression);
             expression = WrapHtmlDecode(expression);
+            var isMultiline = DoesExpressionShouldBeThreatedAsMultiline(expression);
             return new IRazorNode[] 
             {
                 ExpressionNodeFactory.CreateExpressionNode(expression, isMultiline)
             };
+        }
+
+        private bool DoesExpressionShouldBeThreatedAsMultiline(string expression)
+        {
+            var options = CSharpParseOptions.Default
+                .WithKind(SourceCodeKind.Script)
+                .WithDocumentationMode(DocumentationMode.None);
+            var syntaxTree = CSharpSyntaxTree.ParseText(expression, options);
+            if (!syntaxTree.HasCompilationUnitRoot)
+            {
+                return false;
+            }
+
+            var root = syntaxTree.GetCompilationUnitRoot();
+            Func<SyntaxNode, bool> descendIntoChildren = s =>
+                !(s is ArgumentListSyntax) &&
+                !(s is CastExpressionSyntax) &&
+                !(s is ParenthesizedExpressionSyntax);
+
+            int i = 0;
+            foreach (var descendantNode in root.DescendantNodes(descendIntoChildren))
+            {
+                Console.WriteLine($"{i++} {descendantNode.GetType().Name} {descendantNode.Kind().ToString()}");
+            }
+            
+            if (root.DescendantNodes(descendIntoChildren).Any(NodeHasTrivia))
+            {
+                return true;
+            }
+
+            return root.DescendantNodes(descendIntoChildren).Any(node =>
+                node is BinaryExpressionSyntax ||
+                node is ConditionalExpressionSyntax);
+        }
+
+        private static bool NodeHasTrivia(SyntaxNode node)
+        {
+            if (node is MemberAccessExpressionSyntax)
+            {
+                return node.ChildTokens().Any(token =>
+                    token.HasLeadingTrivia ||
+                    token.HasTrailingTrivia ||
+                    token.HasStructuredTrivia);
+            }
+            return
+                node.HasLeadingTrivia ||
+                node.HasTrailingTrivia ||
+                node.HasStructuredTrivia;
         }
 
         public bool CanConvertNode(IWebFormsNode node)
